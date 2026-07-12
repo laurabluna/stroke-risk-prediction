@@ -14,6 +14,7 @@ def load_data(filepath):
 def build_preprocessor():
     num_cols_with_na = ['bmi']
     num_cols_no_na = ['age', 'avg_glucose_level']
+    binary_cols = ['hypertension', 'heart_disease']
     cat_cols = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
 
     num_imputer_scaler = Pipeline(steps=[
@@ -33,6 +34,7 @@ def build_preprocessor():
         transformers=[
             ('num_na', num_imputer_scaler, num_cols_with_na),
             ('num', num_scaler, num_cols_no_na),
+            ('binary', 'passthrough', binary_cols),
             ('cat', cat_pipeline, cat_cols)
         ],
         remainder='drop'
