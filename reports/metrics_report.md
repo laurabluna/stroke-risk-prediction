@@ -14,19 +14,19 @@ Modelo: `logistic_regression_balanced`
 
 | Threshold | Precision | Recall | F1-Score | ROC AUC | Accuracy |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0.3570 | 0.7337 | 0.9352 | 0.8223 | 0.8462 | 0.7979 |
+| 0.3976 | 0.7342 | 0.9321 | 0.8214 | 0.8519 | 0.7974 |
 
 ## Teste final
 
 | Threshold | Precision | Recall | F1-Score | ROC AUC | Accuracy |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0.3570 | 0.1123 | 0.8400 | 0.1981 | 0.8451 | 0.6673 |
+| 0.3976 | 0.1097 | 0.8400 | 0.1940 | 0.8407 | 0.6585 |
 
 ## Matriz de confusao no teste
 
 |  | Previsto 0 | Previsto 1 |
 | --- | ---: | ---: |
-| Real 0 | 640 | 332 |
+| Real 0 | 631 | 341 |
 | Real 1 | 8 | 42 |
 
 ## Artefatos

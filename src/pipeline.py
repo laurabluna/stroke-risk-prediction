@@ -1,21 +1,59 @@
 import pandas as pd
+import numpy as np
 import os
+import sys
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, FunctionTransformer
 from imblearn.over_sampling import SMOTE
 import joblib
 
 def load_data(filepath):
     return pd.read_csv(filepath)
 
+def create_binned_features(X: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cria faixas clínicas para idade ('age') e glicose ('avg_glucose_level').
+    Mantém as colunas contínuas originais e adiciona 'age_group' e 'glucose_group'.
+    """
+    if not isinstance(X, pd.DataFrame):
+        X = pd.DataFrame(X)
+    else:
+        X = X.copy()
+
+    if 'age' in X.columns:
+        X['age_group'] = pd.cut(
+            X['age'],
+            bins=[-np.inf, 18, 35, 60, np.inf],
+            labels=['Jovem_0-18', 'Adulto_Jovem_19-35', 'Meia_Idade_36-60', 'Idoso_60+']
+        ).astype(str)
+
+    if 'avg_glucose_level' in X.columns:
+        X['glucose_group'] = pd.cut(
+            X['avg_glucose_level'],
+            bins=[-np.inf, 100, 125, np.inf],
+            labels=['Normal_<100', 'Pre_Diabetes_100-125', 'Elevada_>=126']
+        ).astype(str)
+
+    return X
+
+create_binned_features.__module__ = 'pipeline'
+
 def build_preprocessor():
     num_cols_with_na = ['bmi']
     num_cols_no_na = ['age', 'avg_glucose_level']
     binary_cols = ['hypertension', 'heart_disease']
-    cat_cols = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
+    cat_cols = [
+        'gender',
+        'ever_married',
+        'work_type',
+        'Residence_type',
+        'smoking_status',
+        'age_group',
+        'glucose_group'
+    ]
 
     num_imputer_scaler = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),
@@ -30,7 +68,7 @@ def build_preprocessor():
         ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
     ])
 
-    preprocessor = ColumnTransformer(
+    col_transformer = ColumnTransformer(
         transformers=[
             ('num_na', num_imputer_scaler, num_cols_with_na),
             ('num', num_scaler, num_cols_no_na),
@@ -39,6 +77,11 @@ def build_preprocessor():
         ],
         remainder='drop'
     )
+    
+    preprocessor = Pipeline(steps=[
+        ('feature_creation', FunctionTransformer(create_binned_features)),
+        ('column_transformer', col_transformer)
+    ])
     
     return preprocessor
 
@@ -63,10 +106,12 @@ def run_etl(input_path, output_dir):
     
     os.makedirs(output_dir, exist_ok=True)
     
-    pd.DataFrame(X_train_resampled).to_csv(os.path.join(output_dir, 'X_train.csv'), index=False)
+    feature_names = preprocessor.named_steps['column_transformer'].get_feature_names_out()
+    
+    pd.DataFrame(X_train_resampled, columns=feature_names).to_csv(os.path.join(output_dir, 'X_train.csv'), index=False)
     y_train_resampled.to_csv(os.path.join(output_dir, 'y_train.csv'), index=False)
     
-    pd.DataFrame(X_test_processed).to_csv(os.path.join(output_dir, 'X_test.csv'), index=False)
+    pd.DataFrame(X_test_processed, columns=feature_names).to_csv(os.path.join(output_dir, 'X_test.csv'), index=False)
     y_test.to_csv(os.path.join(output_dir, 'y_test.csv'), index=False)
     
     joblib.dump(preprocessor, os.path.join(output_dir, 'preprocessor.pkl'))
@@ -76,6 +121,7 @@ def run_etl(input_path, output_dir):
     print(f"  Tamanho do treino após o SMOTE: {X_train_resampled.shape[0]} amostras (Balanceado)")
 
 if __name__ == "__main__":
+    sys.modules["pipeline"] = sys.modules["__main__"]
     INPUT_FILE = "data/raw/healthcare-dataset-stroke-data.csv"
     OUTPUT_DIR = "data/processed/"
     
